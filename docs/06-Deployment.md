@@ -1,4 +1,4 @@
-Deployment & Local Development
+# 🖥️ Deployment & Local Development
 
 This guide shows how to run the project **locally** (Poetry + native services) and **via Docker Compose** (Postgres, Redis, OpenSearch, API, Celery worker).
 

@@ -1,4 +1,4 @@
-# Business Flows
+# ➡️ Business Flows
 
 This document explains the end‑to‑end flows across **Auth**, **Users**, **CMS (Content & Media)**, **Import**, and **Discovery**, including how **cache** and **indexing** are used and when **background tasks** run.
 
