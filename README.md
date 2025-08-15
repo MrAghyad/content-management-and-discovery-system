@@ -97,7 +97,7 @@ Contains:
 
 ---
 
-## **[docs/06-Deployment](docs/06-Deployment.md)**
+## **[06-Deployment](docs/06-Deployment.md)**
 
 Contains:
 - Dockerfile explanation
