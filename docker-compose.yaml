@@ -1,0 +1,105 @@
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pg_data:
+  os_data:
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cms}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cms}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - app-network
+
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OS_PASSWORD}
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+      - "9600:9600"
+    volumes:
+      - os_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - app-network
+
+  app:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app:cached
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    command: >
+      bash -lc "
+      poetry run python -m alembic upgrade head &&
+      poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    networks:
+      - app-network
+
+  worker:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - .:/app:cached
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    command: >
+      bash -lc "
+      poetry run celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+      "
+    networks:
+      - app-network
