@@ -80,7 +80,7 @@ This ensures minimal coupling between the domain and external systems.
 
 ---
 
-6. Microservices Readiness
+## 6. Microservices Readiness
 
 Because each module has:
 - Its own domain models
