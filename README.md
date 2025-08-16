@@ -56,8 +56,6 @@ Contains:
 - SOLID principles in practice
 - Low coupling through ports/adapters
 - DTOs in `shared/` as a published language
-- Why we separate infrastructure from domain logic
-- Example: swapping OpenSearch or Redis without touching domain services
 
 ---
 
@@ -67,8 +65,6 @@ Contains:
 - Context boundaries
 - Folder/package relationships
 - How low coupling is enforced
-- How DTOs are versioned
-- How to prevent anti-patterns
 - How services depend only on ports, not adapters
 
 ---
@@ -81,8 +77,6 @@ Contains:
   - Request/response examples
   - Query/body param explanations
   - Auth requirements
-- Uses your OpenAPI docs plus extra clarifications
-
 ---
 
 ## **[05-Business-Flows.md](docs/05-Business-Flows.md)**
@@ -100,12 +94,7 @@ Contains:
 ## **[06-Deployment](docs/06-Deployment.md)**
 
 Contains:
-- Dockerfile explanation
 - docker-compose setup (all services on same network)
-- Env var config
-- Running DB migrations
-- Starting workers (Celery)
-- OpenSearch & Redis configuration
-
+- Troubleshooting guide
 
 
