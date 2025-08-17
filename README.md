@@ -79,7 +79,7 @@ Contains:
   - Auth requirements
 ---
 
-## **[05-Business-Flows.md](docs/05-Business-Flows.md)**
+## **[05-Business-Flows](docs/05-Business-Flows.md)**
 
 Contains:
 - **Content lifecycle**: create → update → delete → index → cache
