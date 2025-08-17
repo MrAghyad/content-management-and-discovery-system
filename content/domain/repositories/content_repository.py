@@ -1,7 +1,7 @@
-from typing import Sequence, Optional
+from typing import Sequence, Optional, List
 from uuid import UUID
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, insert
 from sqlalchemy.orm import selectinload
 
 from content.domain.models.content import Content, ContentStatus
@@ -23,6 +23,7 @@ class ContentRepository(AbstractRepository):
         )
         self.db.add(obj)
 
+        await self.db.commit()
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
@@ -30,7 +31,10 @@ class ContentRepository(AbstractRepository):
     async def get(self, content_id: UUID) -> Optional[Content]:
         stmt = (
             select(Content)
-            .options(selectinload(Content.media), selectinload(Content.categories))
+            .options(
+                selectinload(Content.media),
+                selectinload(Content.categories),  # eager-load to avoid lazy IO later
+            )
             .where(Content.id == content_id)
         )
         res = await self.db.execute(stmt)
@@ -48,24 +52,31 @@ class ContentRepository(AbstractRepository):
                     setattr(obj, field, ContentStatus(data[field]))
                 else:
                     setattr(obj, field, data[field])
+
+        await self.db.commit()
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
 
     async def delete(self, content_id: UUID) -> bool:
         res = await self.db.execute(delete(Content).where(Content.id == content_id))
+        await self.db.execute(
+            delete(content_categories).where(content_categories.c.content_id == content_id)
+        )
+        await self.db.flush()
         return res.rowcount > 0
 
     async def list(
         self,
-        q: str | None,
-        media: str | None,
-        category: str | None,
-        language: str | None,
-        status: str | None,
-        limit: int,
-        offset: int,
+        **filters
     ) -> Sequence[Content]:
+        q = filters.get("q", None)
+        language = filters.get("language", None)
+        status = filters.get("status", None)
+        category = filters.get("category", None)
+        limit = filters.get("limit", None)
+        offset = filters.get("offset", None)
+
         stmt = select(Content).options(selectinload(Content.media), selectinload(Content.categories))
         if q:
             like = f"%{q}%"
@@ -78,19 +89,57 @@ class ContentRepository(AbstractRepository):
             # join through association table to filter by category name
             stmt = (
                 stmt.join(content_categories, Content.id == content_categories.c.content_id)
-                    .join(Category, Category.id == content_categories.c.category_id)
-                    .where(Category.name == category)
+                .join(Category, Category.id == content_categories.c.category_id)
+                .where(Category.name == category)
             )
-        stmt = stmt.order_by(Content.publication_date.desc().nullslast(), Content.created_at.desc())
-        stmt = stmt.limit(limit).offset(offset)
+
+        stmt = stmt.order_by(
+            Content.publication_date.desc().nullslast(),
+            Content.created_at.desc(),
+        ).limit(limit).offset(offset)
+
         res = await self.db.execute(stmt)
         return res.scalars().unique().all()
 
 
     async def list_all(self) -> Sequence[Content]:
-        res = await self.db.execute(select(Content).options(selectinload(Content.media)))
+        res = await self.db.execute(
+            select(Content).options(
+                selectinload(Content.media),
+                selectinload(Content.categories),
+            )
+        )
         return res.scalars().all()
 
+    # ----------------------------
+    # Category link management (no lazy collection access)
+    # ----------------------------
+
+    async def replace_categories(self, content_id: UUID, category_ids: List[UUID]) -> None:
+        """
+        Replace all category links for a content by manipulating the join table directly.
+        This avoids touching Content.categories (which can trigger lazy loads in async).
+        """
+        # delete existing links
+        await self.db.execute(
+            delete(content_categories).where(content_categories.c.content_id == content_id)
+        )
+        await self.db.flush()
+
+        # insert new links
+        if category_ids:
+            rows = [{"content_id": content_id, "category_id": cid} for cid in category_ids]
+            for row in rows:
+                await self.db.execute(insert(content_categories).values(**row))
+            await self.db.flush()
+
+    async def list_category_ids(self, content_id: UUID) -> List[UUID]:
+        res = await self.db.execute(
+            select(content_categories.c.category_id).where(
+                content_categories.c.content_id == content_id
+            )
+        )
+        return [row[0] for row in res.all()]
 
     async def get_by_parent_id(self, id):
         pass

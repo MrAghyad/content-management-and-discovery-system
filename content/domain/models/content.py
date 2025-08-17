@@ -31,4 +31,4 @@ class Content(Base):
 
     # one-to-one to media
     media = relationship("ContentMedia", back_populates="content", uselist=False, cascade="all, delete-orphan")
-    categories = relationship("Category", secondary=content_categories, back_populates="contents")  # NEW
+    categories = relationship("Category", lazy="selectin", secondary=content_categories, back_populates="contents")  # NEW

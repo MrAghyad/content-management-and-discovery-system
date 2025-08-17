@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database.db import get_session
 from app.core.auth import optional_current_user, require_staff
+from content.domain.entities.content import ContentCreate
 from content.domain.repositories import ContentRepository, ContentMediaRepository
 from content.domain.repositories.category_repository import CategoryRepository
 from shared.entities.content import ContentOut
@@ -30,8 +31,8 @@ async def get_services(
     indexer: IndexerPort = Depends(get_indexer),
     cache: CachePort = Depends(get_cache),
 ):
-    return (ContentService(ContentRepository(db), CategoryRepository(db), ContentMediaRepository(db), indexer=indexer, cache=cache),
-            ContentMediaService(ContentMediaRepository(db), indexer=indexer, cache=cache))
+    return (ContentService(ContentRepository(db), CategoryRepository(db), ContentMediaRepository(db), cache_port=cache),
+            ContentMediaService(ContentMediaRepository(db), cache_port=cache))
 
 
 
@@ -88,14 +89,13 @@ async def get_services(
     },
 )
 async def create_content(
-    payload: dict,
+    payload: ContentCreate,
     services = Depends(get_services),
 ):
     # payload validated via Pydantic at service layer entities
     content_svc, media_svc = services
-    from content.domain.entities.content import ContentCreate
     obj = await content_svc.create(ContentCreate.model_validate(payload))
-    media = await media_svc.get_by_parent_id(obj.id)
+    media = await media_svc.get_by_content_id(obj.id)
     return ContentOut(
         id=obj.id,
         title=obj.title,
