@@ -1,6 +1,8 @@
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from shared.abstracts.abstract_repository import AbstractRepository
 from users.models.user import User
@@ -8,12 +10,22 @@ from users.models.role import Role
 
 class UserRepository(AbstractRepository):
     async def get(self, user_id: UUID) -> Optional[User]:
-        res = await self.db.execute(select(User).where(User.id == user_id))
-        return res.scalar_one_or_none()
+        stmt = (
+            select(User)
+            .options(selectinload(User.roles))
+            .where(User.id == user_id)
+        )
+        res = await self.db.execute(stmt)
+        return res.scalars().first()
 
     async def get_by_email(self, email: str) -> Optional[User]:
-        res = await self.db.execute(select(User).where(User.email == email))
-        return res.scalar_one_or_none()
+        stmt = (
+            select(User)
+            .options(selectinload(User.roles))
+            .where(User.email == email)
+        )
+        res = await self.db.execute(stmt)
+        return res.scalars().first()
 
     async def create(self, email: str, password_hash: str, roles: List[Role]) -> User:
         user = User(email=email, password_hash=password_hash)

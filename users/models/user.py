@@ -15,4 +15,4 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    roles: Mapped[List["Role"]] = relationship("Role", secondary=user_roles, back_populates="users")
+    roles: Mapped[List["Role"]] = relationship("Role", lazy="selectin", cascade="all", secondary=user_roles, back_populates="users")

@@ -28,4 +28,4 @@ class UserService:
         return await self.users.get_by_email(email)
 
     async def get_by_id(self, user_id) -> Optional[User]:
-        return await self.users.get_by_id(user_id)
+        return await self.users.get(user_id)
