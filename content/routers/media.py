@@ -26,7 +26,7 @@ async def get_service(
     indexer: IndexerPort = Depends(get_indexer),
     cache: CachePort = Depends(get_cache),
 ):
-    return ContentMediaService(ContentMediaRepository(db), indexer=indexer, cache=cache)
+    return ContentMediaService(ContentMediaRepository(db), cache_port=cache)
 
 @router.get(
     "",
@@ -43,7 +43,7 @@ async def get_media(
     content_id: UUID = Path(..., description="Content UUID"),
     media_svc = Depends(get_service),
 ):
-    media = await media_svc.get_by_parent_id(content_id)
+    media = await media_svc.get_by_content_id(content_id)
     if not media:
         raise HTTPException(status_code=404, detail="not found")
     return ContentMediaOut.model_validate(media)

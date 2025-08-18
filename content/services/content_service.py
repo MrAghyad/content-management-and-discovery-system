@@ -1,3 +1,4 @@
+import json
 from typing import Sequence, Optional, List
 from uuid import UUID
 
@@ -104,7 +105,7 @@ class ContentService:
         key = _ck_content(content_id)
         cached = await cache.get(key)
         if cached:
-            return ContentOut.model_validate(cached)
+            return ContentOut.model_validate(json.loads(cached))
 
         obj = await self.repo.get(content_id)
         if not obj:

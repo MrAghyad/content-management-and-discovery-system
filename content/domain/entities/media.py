@@ -7,16 +7,16 @@ MediaSource = Literal["upload", "external"]
 MediaProvider = Literal["team", "youtube"]
 
 class ContentMediaBase(BaseModel):
-    media_type: MediaType
-    source: MediaSource
+    media_type: Optional[MediaType] = "audio"
+    source: Optional[MediaSource] = "upload"
     media_file: str | None = None
     external_url: HttpUrl | None = None
-    media_provider: MediaProvider = "team"
+    media_provider: Optional[MediaProvider] = "team"
 
 class ContentMediaCreate(ContentMediaBase):
     pass
 
-class ContentMediaUpdate(BaseModel):
+class ContentMediaUpdate(ContentMediaBase):
     pass
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 from content.domain.entities.media import ContentMediaBase
@@ -6,8 +7,8 @@ from content.domain.entities.media import ContentMediaBase
 
 class ContentMediaOut(ContentMediaBase):
     id: UUID
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

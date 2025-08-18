@@ -23,6 +23,7 @@ class ContentMediaRepository(AbstractRepository):
             external_url=str(payload.external_url) if payload.external_url else None,
         )
         self.db.add(obj)
+        await self.db.commit()
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
@@ -42,12 +43,15 @@ class ContentMediaRepository(AbstractRepository):
             obj.media_file = data["media_file"]
         if "external_url" in data:
             obj.external_url = str(data["external_url"]) if data["external_url"] else None
+
+        await self.db.commit()
         await self.db.flush()
         await self.db.refresh(obj)
         return obj
 
     async def delete(self, content_id: UUID) -> bool:
         res = await self.db.execute(delete(ContentMedia).where(ContentMedia.content_id == content_id))
+        await self.db.commit()
         return res.rowcount > 0
 
 

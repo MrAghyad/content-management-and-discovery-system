@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from uuid import UUID
 
@@ -41,9 +42,6 @@ class ContentMediaService:
         await cache.set(_ck_media(content_id), ContentMediaOut.model_validate(media).model_dump(mode="json"),
                         ttl=settings.cache_ttl_seconds)
 
-        # invalidate list caches
-        await self.cache_port.delete_prefix(LIST_PREFIX)
-
         # async reindex the content doc
         index_content.delay(str(content_id))
         return media
@@ -56,7 +54,6 @@ class ContentMediaService:
         await cache.set(_ck_media(content_id), ContentMediaOut.model_validate(media).model_dump(mode="json"),
                         ttl=settings.cache_ttl_seconds)
 
-        await self.cache_port.delete_prefix(LIST_PREFIX)
         index_content.delay(str(content_id))
         return media
 
@@ -66,6 +63,5 @@ class ContentMediaService:
             # remove media key; refresh content key to reflect missing media
             await self.cache_port.delete_keys(_ck_media(content_id))
 
-            await self.cache_port.delete_prefix(LIST_PREFIX)
             index_content.delay(str(content_id))  # reindex without media
         return ok
