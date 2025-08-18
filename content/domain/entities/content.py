@@ -16,7 +16,7 @@ class ContentBase(BaseModel):
 class ContentCreate(ContentBase):
     pass
 
-class ContentUpdate(BaseModel):
+class ContentUpdate(ContentBase):
     model_config = {
         "json_schema_extra": {
             "example": {

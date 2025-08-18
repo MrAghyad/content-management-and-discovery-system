@@ -45,6 +45,7 @@ class ContentService:
 
         # hydrate media and build DTO
         media = await self.media_repo.get_by_parent_id(obj.id)
+        await self.repo.commit(obj)
         dto = _to_detail_dto(obj, media)
 
         # write-through: set item caches
@@ -57,7 +58,7 @@ class ContentService:
             )
 
         # async index only the single doc
-        index_content.delay(str(obj.id))
+        index_content.apply_async((str(obj.id),), countdown=2)
         return obj
 
     async def update(self, content_id: UUID, payload: ContentUpdate):
@@ -86,7 +87,7 @@ class ContentService:
 
         # async index this one doc
         index_content.delay(str(content_id))
-        return obj
+        return dto
 
     async def delete(self, content_id: UUID) -> bool:
         ok = await self.repo.delete(content_id)
@@ -135,7 +136,7 @@ class ContentService:
         No list cache by design. This keeps correctness and avoids broad invalidations.
         If later needed, move to tag-based caching (e.g., per-category tag) or per-query TTL cache.
         """
-        rows = await self.repo.list({"q": q, "media_type": media_type, "category": category,
+        rows = await self.repo.list(**{"q": q, "media_type": media_type, "category": category,
                                      "language": language, "status": status, "limit": limit, "offset": offset})
         result: list[ContentOut] = []
         for row in rows:

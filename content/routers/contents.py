@@ -135,19 +135,7 @@ async def update_content(
     obj = await content_svc.update(content_id, ContentUpdate.model_validate(payload))
     if not obj:
         raise HTTPException(status_code=404, detail="not found")
-    media = await media_svc.get_by_parent_id(obj.id)
-    return ContentOut(
-        id=obj.id,
-        title=obj.title,
-        description=obj.description,
-        categories=[category.name for category in obj.categories],
-        language=obj.language,
-        duration=obj.duration,
-        publication_date=obj.publication_date,
-        created_at=obj.created_at,
-        updated_at=obj.updated_at,
-        media=(ContentMediaOut.model_validate(media) if media else None),
-    )
+    return obj
 
 @router.delete(
     "/{content_id}",
@@ -224,22 +212,7 @@ async def list_contents(
 ):
     content_svc, _ = services
     rows = await content_svc.list(q, media_type, category, language, status, limit, offset)
-    out: list[ContentOut] = []
-    for r in rows:
-        out.append(
-            ContentOut(
-                id=r.id,
-                title=r.title,
-                description=r.description,
-                categories=[category.name for category in r.categories],
-                language=r.language,
-                duration=r.duration,
-                publication_date=r.publication_date,
-                created_at=r.created_at,
-                updated_at=r.updated_at,
-            )
-        )
-    return out
+    return rows
 
 @router.get(
     "/{content_id}",
@@ -296,16 +269,4 @@ async def get_content(
     obj = await content_svc.get(content_id)
     if not obj:
         raise HTTPException(status_code=404, detail="not found")
-    media = await media_svc.get_by_parent_id(obj.id)
-    return ContentOut(
-        id=obj.id,
-        title=obj.title,
-        description=obj.description,
-        categories=obj.categories,
-        language=obj.language,
-        duration=obj.duration,
-        publication_date=obj.publication_date,
-        created_at=obj.created_at,
-        updated_at=obj.updated_at,
-        media=(ContentMediaOut.model_validate(media) if media else None),
-    )
+    return obj

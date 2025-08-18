@@ -59,12 +59,17 @@ class ContentRepository(AbstractRepository):
         return obj
 
     async def delete(self, content_id: UUID) -> bool:
-        res = await self.db.execute(delete(Content).where(Content.id == content_id))
+        # remove join rows first to avoid FK errors if cascade isn't present
         await self.db.execute(
             delete(content_categories).where(content_categories.c.content_id == content_id)
         )
-        await self.db.flush()
-        return res.rowcount > 0
+        res = await self.db.execute(
+            delete(Content).where(Content.id == content_id)
+        )
+        # commit so the deletes persist
+        await self.db.commit()
+        # rowcount can be None on some DBs; coerce safely
+        return bool(getattr(res, "rowcount", 0))
 
     async def list(
         self,
