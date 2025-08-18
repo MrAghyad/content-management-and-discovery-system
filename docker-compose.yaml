@@ -39,6 +39,8 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:2.13.0
+    env_file:
+      - .env
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true
@@ -58,6 +60,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
+    networks:
+      - app-network
+
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.13.0
+    env_file:
+      - .env
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"   # Dashboards UI available at http://localhost:5601
+    environment:
+      OPENSEARCH_HOSTS: ${OS_HOST}
+      OPENSEARCH_USERNAME: ${OS_USERNAME}
+      OPENSEARCH_PASSWORD: ${OS_PASSWORD}
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch
     networks:
       - app-network
 
@@ -99,7 +119,12 @@ services:
         condition: service_healthy
     command: >
       bash -lc "
-      poetry run celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+      poetry run celery -A app.core.celery_app.celery_app worker
+          --loglevel=INFO -Q indexing,default
       "
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      PYTHONPATH: /app
     networks:
       - app-network
