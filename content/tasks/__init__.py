@@ -1,0 +1,1 @@
+from .indexing import index_content, delete_content_index
