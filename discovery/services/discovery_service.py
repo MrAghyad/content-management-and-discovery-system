@@ -29,7 +29,7 @@ class DiscoveryService:
         limit: int,
         offset: int,
     ) -> List[ContentOut]:
-        _, ids = self.search.search(
+        _, docs = self.search.search(
             q,
             {
                 "media_type": media_type,
@@ -43,10 +43,10 @@ class DiscoveryService:
         )
         out: List[ContentOut] = []
         # Hydrate from CMS (cached inside CMS adapter)
-        for cid in ids:
-            detail = await self.cms_read.get_content(UUID(cid))
-            if detail:
-                out.append(ContentOut(**detail.model_dump()))
+        for doc in docs:
+            detail = ContentOut.model_validate(doc)
+            if self.cms_read.get_content(detail.id):
+                out.append(detail)
         return out
 
     async def content_detail(self, content_id: UUID) -> Optional[ContentOut]:

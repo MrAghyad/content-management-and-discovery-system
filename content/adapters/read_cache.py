@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from uuid import UUID
 from content.ports.read_port import CMSReadPort
@@ -14,7 +15,7 @@ class CMSReadCache(CMSReadPort):
     async def get_content(self, content_id: UUID) -> Optional[ContentOut]:
         key = f"disc:content:{content_id}"
         if raw := await cache.get(key):
-            return ContentOut.model_validate_json(raw)
+            return ContentOut.model_validate(json.loads(raw))
         obj = await self.inner.get_content(content_id)
         if obj:
             await cache.set(key, obj.model_dump_json(), self.ttl)
@@ -23,7 +24,7 @@ class CMSReadCache(CMSReadPort):
     async def get_media(self, content_id: UUID) -> Optional[ContentMediaOut]:
         key = f"disc:media:{content_id}"
         if raw := await cache.get(key):
-            return ContentMediaOut.model_validate_json(raw)
+            return ContentMediaOut.model_validate(json.loads(raw))
         obj = await self.inner.get_media(content_id)
         if obj:
             await cache.set(key, obj.model_dump_json(), self.ttl)

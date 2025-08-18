@@ -8,8 +8,8 @@ from shared.entities.media import ContentMediaOut
 
 class ContentOut(ContentBase):
     id: UUID
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     media: Optional[ContentMediaOut] = None
 
     class Config:

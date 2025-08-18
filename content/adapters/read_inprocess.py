@@ -14,21 +14,7 @@ class CMSInProcessAdapter(CMSReadPort):
 
     async def get_content(self, content_id: UUID) -> Optional[ContentOut]:
         obj = await self._content.get(content_id)
-        if not obj:
-            return None
-        media = await self._media.get_by_content_id(content_id)
-        return ContentOut(
-            id=obj.id,
-            title=obj.title,
-            description=obj.description,
-            category=obj.category,
-            language=obj.language,
-            duration=obj.duration,
-            publication_date=obj.publication_date,
-            created_at=obj.created_at,
-            updated_at=obj.updated_at,
-            media=(ContentMediaOut.model_validate(media) if media else None),
-        )
+        return obj
 
     async def get_media(self, content_id: UUID) -> Optional[ContentMediaOut]:
         media = await self._media.get_by_content_id(content_id)
