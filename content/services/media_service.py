@@ -5,6 +5,7 @@ from app.core.config import settings
 from content.ports.outbound.cache_port import CachePort
 from shared.abstracts.abstract_repository import AbstractRepository
 from shared.entities.media import ContentMediaOut
+from content.tasks.indexing import index_content
 
 def _ck_media(cid: UUID) -> str:   return f"disc:media:{cid}"
 
@@ -39,6 +40,9 @@ class ContentMediaService:
 
         # write-through
         await self.cache_port.set(_ck_media(content_id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
+        # async reindex the content doc
+        index_content.delay(str(content_id))
+
         return dto
 
     async def update(self, content_id: UUID, payload) -> Optional[ContentMediaOut]:
@@ -49,6 +53,8 @@ class ContentMediaService:
         dto = ContentMediaOut.model_validate(media)
         # write-through
         await self.cache_port.set(_ck_media(content_id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
+        # async reindex the content doc
+        index_content.delay(str(content_id))
         return dto
 
     async def delete(self, content_id: UUID) -> bool:
@@ -56,4 +62,6 @@ class ContentMediaService:
         if ok:
             # evict only this media key
             await self.cache_port.delete_keys(_ck_media(content_id))
+            # async reindex the content doc
+            index_content.delay(str(content_id))
         return ok
