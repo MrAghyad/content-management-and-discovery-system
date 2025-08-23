@@ -72,3 +72,4 @@ This codebase is a **modular monolith** that applies **Domain‑Driven Design** 
 5. [API Documentation](04-API-Documentation.md)
 6. [Business Flows](05-Business-Flows.md)
 7. [Deployment Guide](06-Deployment.md)
+8. [Future Work](07-Future-Work.md)

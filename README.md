@@ -97,4 +97,9 @@ Contains:
 - docker-compose setup (all services on same network)
 - Troubleshooting guide
 
+---
 
+## **[07-Future-Work](docs/07-Future-Work.md)**
+
+Contains:
+- A summarized plan for some future work
