@@ -18,6 +18,7 @@ We keep our documentation organized into separate pages for clarity.
 5. [API Documentation](docs/04-API-Documentation.md)
 6. [Business Flows](docs/05-Business-Flows.md)
 7. [Deployment Guide](docs/06-Deployment.md)
+8. [Future Work](docs/07-Future-Work.md)
 
 ---
 
