@@ -23,7 +23,6 @@ def get_cache() -> CachePort:
 
 async def get_service(
     db: AsyncSession = Depends(get_session),
-    indexer: IndexerPort = Depends(get_indexer),
     cache: CachePort = Depends(get_cache),
 ):
     return ContentMediaService(ContentMediaRepository(db), cache_port=cache)
@@ -46,7 +45,7 @@ async def get_media(
     media = await media_svc.get_by_content_id(content_id)
     if not media:
         raise HTTPException(status_code=404, detail="not found")
-    return ContentMediaOut.model_validate(media)
+    return media
 
 @router.post(
     "",
@@ -71,7 +70,7 @@ async def create_media(
     media_svc = Depends(get_service),
 ):
     media = await media_svc.create(content_id, ContentMediaCreate.model_validate(payload))
-    return ContentMediaOut.model_validate(media)
+    return media
 
 @router.patch(
     "",
@@ -97,7 +96,7 @@ async def update_media(
     media = await media_svc.update(content_id, ContentMediaUpdate.model_validate(payload))
     if not media:
         raise HTTPException(status_code=404, detail="not found")
-    return ContentMediaOut.model_validate(media)
+    return media
 
 @router.delete(
     "",
