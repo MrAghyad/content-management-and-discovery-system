@@ -86,6 +86,48 @@ You are all set 🎉
 
 ---
 
+## 4) 🧪 Testing
+
+We use pytest for automated testing across the different bounded contexts of the system.
+
+### Test Files
+- content/tests/routers/test_content_router.py 
+  - Covers content CRUD flows (create, update, delete, category handling, caching, indexing). 
+- content/tests/routers/test_media_router.py 
+  - Covers media endpoints (create, update, delete, caching behavior for video/audio).
+- discovery/tests/routers/test_discovery_router.py 
+  - Covers discovery endpoints (search, browse, content detail, parameter forwarding).
+
+### conftest.py
+- Provides shared fixtures:
+  - client: async httpx.AsyncClient instance bound to FastAPI.
+  - db_session: async SQLAlchemy session reset per test.
+  - fake_cache: in-memory cache adapter to simulate Redis.
+  - celery_delay_spy: spy to capture async task enqueueing.
+- Auth dependencies (require_staff, optional_current_user) are automatically overridden to simplify testing router behavior.
+
+### Running Tests
+To run all tests, from inside the server
+```bash
+pytest . -vv
+```
+
+Run a specific test file:
+```bash
+pytest content/tests/routers/test_content_router.py -vv
+```
+
+Run a specific testcase:
+```bash
+pytest -k "test_should_update_category_links_in_db" -vv
+```
+
+### Notes
+- **Tests are fully isolated:** DB is reset per function-level scope.
+- Cache and Celery are mocked to avoid hitting external services.
+- Each test follows Given / When / Then structure with clear assertions (field-by-field checks where applicable).
+---
+
 ## 💡 Read Next
 1. [Overview](00-Overview.md)
 2. [Architecture](01-Architecture.md)
@@ -94,4 +136,4 @@ You are all set 🎉
 5. [API Documentation](04-API-Documentation.md) 
 6. [Business Flows](05-Business-Flows.md)
 7. Deployment Guide 👈🏼
- 
+8. [Future Work](07-Future-Work.md) 
