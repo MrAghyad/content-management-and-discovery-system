@@ -9,10 +9,8 @@ from content.domain.entities.content import ContentCreate
 from content.domain.repositories import ContentRepository, ContentMediaRepository
 from content.domain.repositories.category_repository import CategoryRepository
 from shared.entities.content import ContentOut
-from shared.entities.media import ContentMediaOut
 from content.domain.entities.content import ContentUpdate
 from content.services.content_service import ContentService
-from content.services.media_service import ContentMediaService
 from content.ports.outbound.indexer_port import IndexerPort
 from content.ports.outbound.cache_port import CachePort
 from content.adapters.outbound.indexer_opensearch import OpenSearchIndexer
@@ -28,11 +26,9 @@ def get_cache() -> CachePort:
 
 async def get_services(
     db: AsyncSession = Depends(get_session),
-    indexer: IndexerPort = Depends(get_indexer),
     cache: CachePort = Depends(get_cache),
 ):
-    return (ContentService(ContentRepository(db), CategoryRepository(db), ContentMediaRepository(db), cache_port=cache),
-            ContentMediaService(ContentMediaRepository(db), cache_port=cache))
+    return ContentService(ContentRepository(db), CategoryRepository(db), ContentMediaRepository(db), cache_port=cache)
 
 
 
@@ -93,21 +89,9 @@ async def create_content(
     services = Depends(get_services),
 ):
     # payload validated via Pydantic at service layer entities
-    content_svc, media_svc = services
+    content_svc = services
     obj = await content_svc.create(ContentCreate.model_validate(payload))
-    media = await media_svc.get_by_content_id(obj.id)
-    return ContentOut(
-        id=obj.id,
-        title=obj.title,
-        description=obj.description,
-        categories=[category.name for category in obj.categories],
-        language=obj.language,
-        duration=obj.duration,
-        publication_date=obj.publication_date,
-        created_at=obj.created_at,
-        updated_at=obj.updated_at,
-        media=(ContentMediaOut.model_validate(media) if media else None),
-    )
+    return obj
 
 @router.patch(
     "/{content_id}",
@@ -131,7 +115,7 @@ async def update_content(
     payload: ContentUpdate = Body(..., description="Partial update payload"),
     services = Depends(get_services),
 ):
-    content_svc, media_svc = services
+    content_svc = services
     obj = await content_svc.update(content_id, ContentUpdate.model_validate(payload))
     if not obj:
         raise HTTPException(status_code=404, detail="not found")
@@ -156,7 +140,7 @@ async def delete_content(
     content_id: UUID = Path(..., description="Content UUID"),
     services = Depends(get_services),
 ):
-    content_svc, _ = services
+    content_svc = services
     ok = await content_svc.delete(content_id)
     if not ok:
         raise HTTPException(status_code=404, detail="not found")
@@ -210,7 +194,7 @@ async def list_contents(
     offset: int = Query(0, ge=0, description="Offset for pagination."),
     services = Depends(get_services),
 ):
-    content_svc, _ = services
+    content_svc = services
     rows = await content_svc.list(q, media_type, category, language, status, limit, offset)
     return rows
 
@@ -265,7 +249,7 @@ async def get_content(
     content_id: UUID = Path(..., description="Content UUID"),
     services = Depends(get_services),
 ):
-    content_svc, media_svc = services
+    content_svc = services
     obj = await content_svc.get(content_id)
     if not obj:
         raise HTTPException(status_code=404, detail="not found")

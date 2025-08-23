@@ -129,6 +129,7 @@ class ContentRepository(AbstractRepository):
         await self.db.execute(
             delete(content_categories).where(content_categories.c.content_id == content_id)
         )
+        await self.db.commit()
         await self.db.flush()
 
         # insert new links
@@ -136,6 +137,7 @@ class ContentRepository(AbstractRepository):
             rows = [{"content_id": content_id, "category_id": cid} for cid in category_ids]
             for row in rows:
                 await self.db.execute(insert(content_categories).values(**row))
+            await self.db.commit()
             await self.db.flush()
 
     async def list_category_ids(self, content_id: UUID) -> List[UUID]:

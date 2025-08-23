@@ -5,13 +5,13 @@ from datetime import date
 ContentStatus = Literal["draft", "ready", "published"]
 
 class ContentBase(BaseModel):
-    title: constr(min_length=1, max_length=255)
+    title: constr(min_length=1, max_length=255) | None = None
     description: str | None = None
     language: constr(max_length=32) | None = None
     duration: int | None = Field(default=None, ge=0)
     publication_date: date | None = None
-    status: ContentStatus = "draft"
-    categories: List[str] = []
+    status: ContentStatus | None = "draft"
+    categories: List[str] | None = []
 
 class ContentCreate(ContentBase):
     pass

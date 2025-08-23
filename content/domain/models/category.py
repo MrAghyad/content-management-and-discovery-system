@@ -2,7 +2,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, UniqueConstraint, Table, Column, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.core.database.base import Base
 
@@ -17,7 +17,7 @@ class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (UniqueConstraint("name", name="uq_categories_name"),)
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), default=uuid4, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
 
     # reverse relationship (optional; not strictly needed on Category side)

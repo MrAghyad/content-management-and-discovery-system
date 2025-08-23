@@ -1,7 +1,12 @@
-from typing import Protocol
+from typing import Protocol, Any
 
 
 class CachePort(Protocol):
+
+    async def get(self, key: str) -> Any | None: ...
+
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool: ...
+
     async def delete_keys(self, *keys: str) -> None: ...
 
     async def delete_prefix(self, prefix: str) -> None: ...

@@ -1,4 +1,3 @@
-import json
 from typing import Sequence, Optional, List
 from uuid import UUID
 
@@ -8,13 +7,10 @@ from shared.abstracts.abstract_repository import AbstractRepository
 from shared.entities.content import ContentOut
 from shared.entities.media import ContentMediaOut
 from app.core.config import settings
-from app.core.cache import cache
 from content.tasks.indexing import index_content, delete_content_index
-
 
 def _ck_content(cid: UUID) -> str: return f"disc:content:{cid}"
 def _ck_media(cid: UUID) -> str:   return f"disc:media:{cid}"
-
 
 class ContentService:
     """
@@ -29,12 +25,12 @@ class ContentService:
         repo: AbstractRepository,                 # ContentRepository
         categories_repo: AbstractRepository,      # CategoryRepository
         media_repo: AbstractRepository,           # ContentMediaRepository
-        cache_port: CachePort,                    # RedisCacheAdapter (for delete_keys reuse)
+        cache_port: CachePort,                    # RedisCacheAdapter (or FakeCache in tests)
     ):
         self.repo = repo
         self.categories_repo = categories_repo
         self.media_repo = media_repo
-        self.cache_port = cache_port
+        self.cache = cache_port
 
     # ---------- Mutations (update cache + index async) ----------
 
@@ -49,10 +45,10 @@ class ContentService:
         await self.repo.commit(obj)
         dto = _to_detail_dto(obj, media)
 
-        # write-through: set item caches
-        await cache.set(_ck_content(obj.id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
+        # write-through: set item caches (store plain dicts; adapter handles serialization)
+        await self.cache.set(_ck_content(obj.id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
         if media:
-            await cache.set(
+            await self.cache.set(
                 _ck_media(obj.id),
                 ContentMediaOut.model_validate(media).model_dump(mode="json"),
                 ttl=settings.cache_ttl_seconds,
@@ -60,7 +56,7 @@ class ContentService:
 
         # async index only the single doc
         index_content.apply_async((str(obj.id),), countdown=2)
-        return obj
+        return dto
 
     async def update(self, content_id: UUID, payload: ContentUpdate):
         obj = await self.repo.update(content_id, payload)
@@ -75,16 +71,16 @@ class ContentService:
         dto = _to_detail_dto(obj, media)
 
         # write-through: update item caches
-        await cache.set(_ck_content(content_id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
+        await self.cache.set(_ck_content(content_id), dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
         if media:
-            await cache.set(
+            await self.cache.set(
                 _ck_media(content_id),
                 ContentMediaOut.model_validate(media).model_dump(mode="json"),
                 ttl=settings.cache_ttl_seconds,
             )
         else:
             # if media absent, evict its key only
-            await self.cache_port.delete_keys(_ck_media(content_id))
+            await self.cache.delete_keys(_ck_media(content_id))
 
         # async index this one doc
         index_content.delay(str(content_id))
@@ -94,7 +90,7 @@ class ContentService:
         ok = await self.repo.delete(content_id)
         if ok:
             # remove only this content’s item caches
-            await self.cache_port.delete_keys(_ck_content(content_id), _ck_media(content_id))
+            await self.cache.delete_keys(_ck_content(content_id), _ck_media(content_id))
             # async index delete
             delete_content_index.delay(str(content_id))
         return ok
@@ -103,9 +99,10 @@ class ContentService:
 
     async def get(self, content_id: UUID) -> Optional[ContentOut]:
         key = _ck_content(content_id)
-        cached = await cache.get(key)
+        cached = await self.cache.get(key)
         if cached:
-            return ContentOut.model_validate(json.loads(cached))
+            # cached is already a dict from the adapter; no json.loads
+            return ContentOut.model_validate(cached)
 
         obj = await self.repo.get(content_id)
         if not obj:
@@ -114,9 +111,9 @@ class ContentService:
         media = await self.media_repo.get_by_parent_id(content_id)
         dto = _to_detail_dto(obj, media)
 
-        await cache.set(key, dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
+        await self.cache.set(key, dto.model_dump(mode="json"), ttl=settings.cache_ttl_seconds)
         if media:
-            await cache.set(
+            await self.cache.set(
                 _ck_media(content_id),
                 ContentMediaOut.model_validate(media).model_dump(mode="json"),
                 ttl=settings.cache_ttl_seconds,
@@ -137,8 +134,17 @@ class ContentService:
         No list cache by design. This keeps correctness and avoids broad invalidations.
         If later needed, move to tag-based caching (e.g., per-category tag) or per-query TTL cache.
         """
-        rows = await self.repo.list(**{"q": q, "media_type": media_type, "category": category,
-                                     "language": language, "status": status, "limit": limit, "offset": offset})
+        rows = await self.repo.list(
+            **{
+                "q": q,
+                "media_type": media_type,
+                "category": category,
+                "language": language,
+                "status": status,
+                "limit": limit,
+                "offset": offset,
+            }
+        )
         result: list[ContentOut] = []
         for row in rows:
             # row.media may be eager-loaded; fallback to repo if not
@@ -154,13 +160,10 @@ class ContentService:
         """
         cats = await self.categories_repo.ensure_by_names(category_names)
         cat_ids = [c.id for c in cats]
-        # obj.categories = cats
-        # use content repo’s replace method if available; otherwise call via self.repo
         if hasattr(self.repo, "replace_categories"):
             await self.repo.replace_categories(obj.id, cat_ids)  # type: ignore[attr-defined]
             await self.repo.commit(obj)
         else:
-            # fallback: define here if needed (but your ContentRepository already has it)
             raise RuntimeError("ContentRepository.replace_categories is required")
 
 
@@ -176,5 +179,6 @@ def _to_detail_dto(obj, media) -> ContentOut:
         categories=[c.name for c in (obj.categories or [])],
         created_at=obj.created_at,
         updated_at=obj.updated_at,
+        status=obj.status,
         media=(ContentMediaOut.model_validate(media) if media else None),
     )
