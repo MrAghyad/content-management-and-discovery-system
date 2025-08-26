@@ -128,6 +128,25 @@ pytest -k "test_should_update_category_links_in_db" -vv
 - Each test follows Given / When / Then structure with clear assertions (field-by-field checks where applicable).
 ---
 
+## 5) Default Admin User
+
+When the system is started for the first time, Alembic migrations will automatically create a default admin user.
+
+`Email: admin@example.com`
+
+`Password: ChangeMe123!`
+
+This user has administrator privileges and can:
+- Log in to the system
+- Create new users (staff or editors)
+- Manage content, media, and categories
+- Oversee discovery and indexing workflows
+
+```
+⚠️ Important: For production deployments, update this password immediately after first login.
+```
+---
+
 ## 💡 Read Next
 1. [Overview](00-Overview.md)
 2. [Architecture](01-Architecture.md)
